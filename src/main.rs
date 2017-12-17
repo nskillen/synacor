@@ -1,3 +1,5 @@
+#![feature(try_trait)]
+
 use std::fs::File;
 use std::io::prelude::*;
 

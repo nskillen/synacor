@@ -18,7 +18,7 @@ impl Bus {
     pub fn write_word(&mut self, addr: usize, value: u16) { self.memory.write(addr, value); }
 
     pub fn push_word(&mut self, value: u16) { self.stack.push(value); }
-    pub fn pop_word(&mut self) -> Option<u16> { self.stack.pop() }
+    pub fn pop_word(&mut self) -> Result<u16,String> { self.stack.pop().ok_or(format!("Attempted to pop from empty stack")) }
 
     // pub fn reset(&mut self) {
     //     self.memory = Memory::new();

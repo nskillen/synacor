@@ -4,4 +4,7 @@ pub mod memory;
 pub mod stack;
 pub mod vm;
 
+mod op_res;
+use self::op_res::OpRes;
+
 pub use self::vm::Vm;

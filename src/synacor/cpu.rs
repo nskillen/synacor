@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use super::bus::Bus;
+use super::{OpRes};
 
 pub const MAX_MEM_ADDR:  u16   = 0x7FFF;
 pub const MODULO:        u16   = 0x8000;
@@ -118,7 +119,7 @@ impl Cpu {
     }
 
     fn execute(&mut self, instruction: Instruction, bus: &mut Bus) {
-        let res: Result<(), String> = match instruction {
+        let res: OpRes<String> = match instruction {
             /*  0 */ Instruction::Halt        => op::halt(self,bus),
             /*  1 */ Instruction::Set(a,b)    => op::set(self,bus,a,b),
             /*  2 */ Instruction::Push(a)     => op::push(self,bus,a),
@@ -143,10 +144,10 @@ impl Cpu {
             /* 21 */ Instruction::Noop        => op::noop(),
         };
 
-        if res.is_err() {
+        if res.is_failure() {
             self.state = CpuState::Error;
             println!("ERROR");
-            println!("Instruction failed: {}", res.unwrap_err());
+            println!("Instruction failed: {}", res.unwrap_failure());
             println!("CPU State:");
             println!("{:?}", self);
             println!("Last 5 instructions:");
@@ -213,6 +214,8 @@ mod op {
     use std;
     use std::io::Read;
     use std::ops::{BitAnd,BitOr};
+    use super::OpRes;
+    use super::OpRes::{Success,Failure};
 
     use super::{Addr,Bus,Cpu,CpuState,MAX_MEM_ADDR,MODULO};
 
@@ -246,190 +249,173 @@ mod op {
 
     /* CPU OPS HERE */
 
-    pub fn halt(cpu: &mut Cpu, _bus: &Bus) -> Result<(), String> {
+    pub fn halt(cpu: &mut Cpu, _bus: &Bus) -> OpRes<String> {
         cpu.state = CpuState::Halted;
-        Ok(())
+        Success
     }
 
-    pub fn set(cpu: &mut Cpu, _bus: &Bus, a: u16, b: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            cpu.register_put(_a, _b);
-            Ok(())
-        })
+    pub fn set(cpu: &mut Cpu, _bus: &Bus, a: u16, b: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let data = map_val(b,cpu);
+        cpu.register_put(reg, data);
+        Success
     }
 
-    pub fn push(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> Result<(), String> {
+    pub fn push(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         bus.push_word(_a);
-        Ok(())
+        Success
     }
 
-    pub fn pop(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            match bus.pop_word() {
-                Some(v) => cpu.register_put(_a, v),
-                None => return Err(format!("Attempted to pop from empty stack!")),
-            }
-            Ok(())
-        })
+    pub fn pop(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let data = bus.pop_word()?;
+        cpu.register_put(reg, data);
+        Success
     }
 
-    pub fn eq(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, if _b == _c { 1 } else { 0 });
-            Ok(())
-        })
+    pub fn eq(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, if _b == _c { 1 } else { 0 });
+        Success
     }
 
-    pub fn gt(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, if _b > _c { 1 } else { 0 });
-            Ok(())
-        })
+    pub fn gt(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, if _b > _c { 1 } else { 0 });
+        Success
     }
 
-    pub fn jmp(cpu: &mut Cpu, a: u16) -> Result<(), String> {
+    pub fn jmp(cpu: &mut Cpu, a: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         if _a > MAX_MEM_ADDR {
-            Err(format!("Jump target invalid: {:#04X}", _a))
+            Failure(format!("Jump target invalid: {:#04X}", _a))
         } else {
             cpu.pc = _a as usize;
-            Ok(())
+            Success
         }
     }
 
-    pub fn jt(cpu: &mut Cpu, a: u16, b: u16) -> Result<(), String> {
+    pub fn jt(cpu: &mut Cpu, a: u16, b: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         let _b = map_val(b,cpu);
         if _a != 0 {
             if _b > MAX_MEM_ADDR {
-                return Err(format!("Jump target invalid: {:#04X}", _b))
+                return Failure(format!("Jump target invalid: {:#04X}", _b))
             } else {
                 cpu.pc = _b as usize;
             }
         }
-        Ok(())
+        Success
     }
 
-    pub fn jf(cpu: &mut Cpu, a: u16, b: u16) -> Result<(), String> {
+    pub fn jf(cpu: &mut Cpu, a: u16, b: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         let _b = map_val(b,cpu);
         if _a == 0 {
             if _b > MAX_MEM_ADDR {
-                return Err(format!("Jump target invalid: {:#04X}", _b))
+                return Failure(format!("Jump target invalid: {:#04X}", _b))
             } else {
                 cpu.pc = _b as usize;
             }
         }
-        Ok(())
+        Success
     }
 
-    pub fn add(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, (_b + _c) % MODULO);
-            Ok(())
-        })
+    pub fn add(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, (_b + _c) % MODULO);
+        Success
     }
 
-    pub fn mult(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, ((_b as u32 * _c as u32) % MODULO as u32) as u16);
-            Ok(())
-        })
+    pub fn mult(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, ((_b as u32 * _c as u32) % MODULO as u32) as u16);
+        Success
     }
 
-    pub fn rmdr(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, _b % _c);
-            Ok(())
-        })
+    pub fn rmdr(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, _b % _c);
+        Success
     }
 
-    pub fn and(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, _b.bitand(_c));
-            Ok(())
-        })
+    pub fn and(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, _b.bitand(_c));
+        Success
     }
 
-    pub fn or(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            let _c = map_val(c,cpu);
-            cpu.register_put(_a, _b.bitor(_c));
-            Ok(())
-        })
+    pub fn or(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        let _c = map_val(c,cpu);
+        cpu.register_put(reg, _b.bitor(_c));
+        Success
     }
 
-    pub fn not(cpu: &mut Cpu, a: u16, b: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            cpu.register_put(_a, (!_b).bitand(0x7FFF));
-            Ok(())
-        })
+    pub fn not(cpu: &mut Cpu, a: u16, b: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        cpu.register_put(reg, (!_b).bitand(0x7FFF));
+        Success
     }
 
-    pub fn rmem(cpu: &mut Cpu, bus: &Bus, a: u16, b: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            let _b = map_val(b,cpu);
-            cpu.register_put(_a, bus.read_word(_b as usize));
-            Ok(())
-        })
+    pub fn rmem(cpu: &mut Cpu, bus: &Bus, a: u16, b: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let _b = map_val(b,cpu);
+        cpu.register_put(reg, bus.read_word(_b as usize));
+        Success
     }
 
-    pub fn wmem(cpu: &mut Cpu, bus: &mut Bus, a: u16, b: u16) -> Result<(), String> {
+    pub fn wmem(cpu: &mut Cpu, bus: &mut Bus, a: u16, b: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         let _b = map_val(b,cpu);
         bus.write_word(_a as usize, _b);
-        Ok(())
+        Success
     }
 
-    pub fn call(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> Result<(), String> {
+    pub fn call(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         if _a > MAX_MEM_ADDR {
-            Err(format!("Called invalid memory address: {:#04X}", _a))
+            Failure(format!("Called invalid memory address: {:#04X}", _a))
         } else {
             bus.push_word(cpu.pc as u16);
             cpu.pc = _a as usize;
-            Ok(())
+            Success
         }
     }
 
-    pub fn ret(cpu: &mut Cpu, bus: &mut Bus) -> Result<(), String> {
-        match bus.pop_word() {
-            Some(v) => cpu.pc = v as usize,
-            None => return Err(format!("Attempted to return with nothing on the stack")),
-        }
-        Ok(())
+    pub fn ret(cpu: &mut Cpu, bus: &mut Bus) -> OpRes<String> {
+        let data = bus.pop_word()?;
+        cpu.pc = data as usize;
+        Success
     }
 
-    pub fn outc(cpu: &mut Cpu, a: u16) -> Result<(), String> {
+    pub fn outc(cpu: &mut Cpu, a: u16) -> OpRes<String> {
         let _a = map_val(a,cpu);
         print!("{}", _a as u8 as char);
-        Ok(())
+        Success
     }
 
-    pub fn inc(cpu: &mut Cpu, a: u16) -> Result<(), String> {
-        map_reg(a).and_then(|_a| {
-            read_char().and_then(|c| {
-                cpu.register_put(_a, c);
-                Ok(())
-            })
-        })
+    pub fn inc(cpu: &mut Cpu, a: u16) -> OpRes<String> {
+        let reg = map_reg(a)?;
+        let c = read_char()?;
+        cpu.register_put(reg, c);
+        Success
     }
 
-    pub fn noop() -> Result<(), String> { Ok(()) }
+    pub fn noop() -> OpRes<String> { Success }
 }
