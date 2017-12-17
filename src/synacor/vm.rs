@@ -1,5 +1,6 @@
 use super::cpu::Cpu;
 use super::bus::Bus;
+use super::WORD;
 
 pub struct Vm {
     cpu: Cpu,
@@ -23,7 +24,7 @@ impl Vm {
     //     self.bus.reset();
     // }
 
-    pub fn load_memory(&mut self, program: Vec<u16>) {
+    pub fn load_memory(&mut self, program: Vec<WORD>) {
         for (idx,instr) in program.into_iter().enumerate() {
             self.bus.write_word(idx, instr);
         }

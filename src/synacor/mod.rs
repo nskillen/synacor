@@ -8,3 +8,5 @@ mod op_res;
 use self::op_res::OpRes;
 
 pub use self::vm::Vm;
+
+pub type WORD = u16;

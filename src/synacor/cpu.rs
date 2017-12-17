@@ -1,15 +1,15 @@
 use std::collections::VecDeque;
 use super::bus::Bus;
-use super::{OpRes};
+use super::{OpRes,WORD};
 
-pub const MAX_MEM_ADDR:  u16   = 0x7FFF;
-pub const MODULO:        u16   = 0x8000;
+pub const MAX_MEM_ADDR:  WORD   = 0x7FFF;
+pub const MODULO:        WORD   = 0x8000;
 pub const NUM_REGISTERS: usize = 8;
 
 #[derive(Debug)]
 pub struct Cpu {
     state: CpuState,
-    registers: [u16; NUM_REGISTERS], // arch has 8 16-bit registers
+    registers: [WORD; NUM_REGISTERS], // arch has 8 16-bit registers
     pc: usize, // instruction pointer
     //sp: usize, // stack pointer
     prev_instructions: VecDeque<Instruction>,
@@ -33,8 +33,8 @@ impl Cpu {
     //     self.sp = 0;
     // }
 
-    pub fn register_get(&self, reg: usize) -> u16 { self.registers[reg] }
-    pub fn register_put(&mut self, reg: usize, value: u16) { self.registers[reg] = value; }
+    pub fn register_get(&self, reg: usize) -> WORD { self.registers[reg] }
+    pub fn register_put(&mut self, reg: usize, value: WORD) { self.registers[reg] = value; }
 
     pub fn start(&mut self) {
         if self.state != CpuState::NotStarted {
@@ -73,9 +73,9 @@ impl Cpu {
 
     /* PRIVATE */
 
-    fn fetch(&self, addr: usize, bus: &Bus) -> u16 { bus.read_word(addr) }
+    fn fetch(&self, addr: usize, bus: &Bus) -> WORD { bus.read_word(addr) }
 
-    fn decode(&mut self, instruction_code: u16, bus: &Bus) -> Instruction {
+    fn decode(&mut self, instruction_code: WORD, bus: &Bus) -> Instruction {
         let pc = self.pc.clone();
         let rw = |off| bus.read_word(pc + off);
 
@@ -164,26 +164,26 @@ impl Cpu {
 #[derive(Clone,Copy,Debug)]
 enum Instruction {
     Halt,               //  0       - halts execution
-    Set  (u16,u16),     //  1 a b   - set register <a> to the value of <b>
-    Push (u16),         //  2 a     - push <a> onto the stack
-    Pop  (u16),         //  3 a     - remove the top element from the stack, and write to <a>, empty stack = ERR
-    Eq   (u16,u16,u16), //  4 a b c - set <a> to 1 if <b> is equal to <c>, set to 0 otherwise
-    Gt   (u16,u16,u16), //  5 a b c - set <a> to 1 if <b> is greater than <c>, set to 0 otherwise
-    Jmp  (u16),         //  6 a     - jump to <a>
-    Jt   (u16,u16),     //  7 a b   - if <a> is non-zero, jump to <b>, aka Jnz
-    Jf   (u16,u16),     //  8 a b   - if <a> is zero, jump to <b>, aka Jz
-    Add  (u16,u16,u16), //  9 a b c - store into <a> the sum of <b> and <c>, mod MODULO
-    Mult (u16,u16,u16), // 10 a b c - store into <a> the product of <b> and <c>, mod MODULO
-    Mod  (u16,u16,u16), // 11 a b c - store into <a> the remainder of <b> divided by <c>
-    And  (u16,u16,u16), // 12 a b c - store into <a> the bitwise and of <b> and <c>
-    Or   (u16,u16,u16), // 13 a b c - store into <a> the bitwise or of <b> and <c>
-    Not  (u16,u16),     // 14 a b   - store into <a> the bitwise not of <b>
-    Rmem (u16,u16),     // 15 a b   - read memory at address <b>, write to <a>
-    Wmem (u16,u16),     // 16 a b   - write value from <b> into memory at address <a>
-    Call (u16),         // 17 a     - writes the address of the next instruction to the stack, and jumps to <a>
+    Set  (WORD,WORD),     //  1 a b   - set register <a> to the value of <b>
+    Push (WORD),         //  2 a     - push <a> onto the stack
+    Pop  (WORD),         //  3 a     - remove the top element from the stack, and write to <a>, empty stack = ERR
+    Eq   (WORD,WORD,WORD), //  4 a b c - set <a> to 1 if <b> is equal to <c>, set to 0 otherwise
+    Gt   (WORD,WORD,WORD), //  5 a b c - set <a> to 1 if <b> is greater than <c>, set to 0 otherwise
+    Jmp  (WORD),         //  6 a     - jump to <a>
+    Jt   (WORD,WORD),     //  7 a b   - if <a> is non-zero, jump to <b>, aka Jnz
+    Jf   (WORD,WORD),     //  8 a b   - if <a> is zero, jump to <b>, aka Jz
+    Add  (WORD,WORD,WORD), //  9 a b c - store into <a> the sum of <b> and <c>, mod MODULO
+    Mult (WORD,WORD,WORD), // 10 a b c - store into <a> the product of <b> and <c>, mod MODULO
+    Mod  (WORD,WORD,WORD), // 11 a b c - store into <a> the remainder of <b> divided by <c>
+    And  (WORD,WORD,WORD), // 12 a b c - store into <a> the bitwise and of <b> and <c>
+    Or   (WORD,WORD,WORD), // 13 a b c - store into <a> the bitwise or of <b> and <c>
+    Not  (WORD,WORD),     // 14 a b   - store into <a> the bitwise not of <b>
+    Rmem (WORD,WORD),     // 15 a b   - read memory at address <b>, write to <a>
+    Wmem (WORD,WORD),     // 16 a b   - write value from <b> into memory at address <a>
+    Call (WORD),         // 17 a     - writes the address of the next instruction to the stack, and jumps to <a>
     Ret,                // 18       - remove the top element from the stack and jump to it. empty stack == HLT
-    Out  (u16),         // 19 a     - print the character represented by ASCII(<a>) to the terminal
-    In   (u16),         // 20 a     - read a character from the terminal, and store ASCII_VAL(c) => <a>
+    Out  (WORD),         // 19 a     - print the character represented by ASCII(<a>) to the terminal
+    In   (WORD),         // 20 a     - read a character from the terminal, and store ASCII_VAL(c) => <a>
     Noop,               // 21       - no operation
 }
 
@@ -197,11 +197,11 @@ pub enum CpuState {
 
 enum Addr {
     Register(usize),
-    Immediate(u16),
+    Immediate(WORD),
 }
 
 impl Addr {
-    fn map(value: u16) -> Addr {
+    fn map(value: WORD) -> Addr {
         match value {
             v if v <  0x8000               => Addr::Immediate(v),
             v if v >= 0x8000 && v < 0x8008 => Addr::Register((v - 0x8000) as usize),
@@ -214,32 +214,32 @@ mod op {
     use std;
     use std::io::Read;
     use std::ops::{BitAnd,BitOr};
-    use super::OpRes;
+    use super::{OpRes,WORD};
     use super::OpRes::{Success,Failure};
 
     use super::{Addr,Bus,Cpu,CpuState,MAX_MEM_ADDR,MODULO};
 
-    fn map_val(v: u16, cpu: &Cpu) -> u16 {
+    fn map_val(v: WORD, cpu: &Cpu) -> WORD {
         match Addr::map(v) {
             Addr::Register(r) => cpu.register_get(r),
             Addr::Immediate(i) => i,
         }
     }
 
-    fn map_reg(v: u16) -> Result<usize,String> {
+    fn map_reg(v: WORD) -> Result<usize,String> {
         match Addr::map(v) {
             Addr::Register(r) => Ok(r),
             Addr::Immediate(i) => Err(format!("Invalid register: {}", i)),
         }
     }
 
-    fn read_char() -> Result<u16, String> {
+    fn read_char() -> Result<WORD, String> {
         loop {
             let input = std::io::stdin()
             .bytes()
             .next()
             .and_then(|r| r.ok())
-            .map(|b| b as u16);
+            .map(|b| b as WORD);
 
             if input.is_some() && input.unwrap() == 0x0D { continue; } // skip CHR(13) on windows
 
@@ -254,27 +254,27 @@ mod op {
         Success
     }
 
-    pub fn set(cpu: &mut Cpu, _bus: &Bus, a: u16, b: u16) -> OpRes<String> {
+    pub fn set(cpu: &mut Cpu, _bus: &Bus, a: WORD, b: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let data = map_val(b,cpu);
         cpu.register_put(reg, data);
         Success
     }
 
-    pub fn push(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> OpRes<String> {
+    pub fn push(cpu: &mut Cpu, bus: &mut Bus, a: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         bus.push_word(_a);
         Success
     }
 
-    pub fn pop(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> OpRes<String> {
+    pub fn pop(cpu: &mut Cpu, bus: &mut Bus, a: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let data = bus.pop_word()?;
         cpu.register_put(reg, data);
         Success
     }
 
-    pub fn eq(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn eq(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
@@ -282,7 +282,7 @@ mod op {
         Success
     }
 
-    pub fn gt(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn gt(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
@@ -290,7 +290,7 @@ mod op {
         Success
     }
 
-    pub fn jmp(cpu: &mut Cpu, a: u16) -> OpRes<String> {
+    pub fn jmp(cpu: &mut Cpu, a: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         if _a > MAX_MEM_ADDR {
             Failure(format!("Jump target invalid: {:#04X}", _a))
@@ -300,7 +300,7 @@ mod op {
         }
     }
 
-    pub fn jt(cpu: &mut Cpu, a: u16, b: u16) -> OpRes<String> {
+    pub fn jt(cpu: &mut Cpu, a: WORD, b: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         let _b = map_val(b,cpu);
         if _a != 0 {
@@ -313,7 +313,7 @@ mod op {
         Success
     }
 
-    pub fn jf(cpu: &mut Cpu, a: u16, b: u16) -> OpRes<String> {
+    pub fn jf(cpu: &mut Cpu, a: WORD, b: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         let _b = map_val(b,cpu);
         if _a == 0 {
@@ -326,7 +326,7 @@ mod op {
         Success
     }
 
-    pub fn add(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn add(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
@@ -334,15 +334,15 @@ mod op {
         Success
     }
 
-    pub fn mult(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn mult(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
-        cpu.register_put(reg, ((_b as u32 * _c as u32) % MODULO as u32) as u16);
+        cpu.register_put(reg, ((_b as u32 * _c as u32) % MODULO as u32) as WORD);
         Success
     }
 
-    pub fn rmdr(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn rmdr(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
@@ -350,7 +350,7 @@ mod op {
         Success
     }
 
-    pub fn and(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn and(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
@@ -358,7 +358,7 @@ mod op {
         Success
     }
 
-    pub fn or(cpu: &mut Cpu, a: u16, b: u16, c: u16) -> OpRes<String> {
+    pub fn or(cpu: &mut Cpu, a: WORD, b: WORD, c: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         let _c = map_val(c,cpu);
@@ -366,33 +366,33 @@ mod op {
         Success
     }
 
-    pub fn not(cpu: &mut Cpu, a: u16, b: u16) -> OpRes<String> {
+    pub fn not(cpu: &mut Cpu, a: WORD, b: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         cpu.register_put(reg, (!_b).bitand(0x7FFF));
         Success
     }
 
-    pub fn rmem(cpu: &mut Cpu, bus: &Bus, a: u16, b: u16) -> OpRes<String> {
+    pub fn rmem(cpu: &mut Cpu, bus: &Bus, a: WORD, b: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let _b = map_val(b,cpu);
         cpu.register_put(reg, bus.read_word(_b as usize));
         Success
     }
 
-    pub fn wmem(cpu: &mut Cpu, bus: &mut Bus, a: u16, b: u16) -> OpRes<String> {
+    pub fn wmem(cpu: &mut Cpu, bus: &mut Bus, a: WORD, b: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         let _b = map_val(b,cpu);
         bus.write_word(_a as usize, _b);
         Success
     }
 
-    pub fn call(cpu: &mut Cpu, bus: &mut Bus, a: u16) -> OpRes<String> {
+    pub fn call(cpu: &mut Cpu, bus: &mut Bus, a: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         if _a > MAX_MEM_ADDR {
             Failure(format!("Called invalid memory address: {:#04X}", _a))
         } else {
-            bus.push_word(cpu.pc as u16);
+            bus.push_word(cpu.pc as WORD);
             cpu.pc = _a as usize;
             Success
         }
@@ -404,13 +404,13 @@ mod op {
         Success
     }
 
-    pub fn outc(cpu: &mut Cpu, a: u16) -> OpRes<String> {
+    pub fn outc(cpu: &mut Cpu, a: WORD) -> OpRes<String> {
         let _a = map_val(a,cpu);
         print!("{}", _a as u8 as char);
         Success
     }
 
-    pub fn inc(cpu: &mut Cpu, a: u16) -> OpRes<String> {
+    pub fn inc(cpu: &mut Cpu, a: WORD) -> OpRes<String> {
         let reg = map_reg(a)?;
         let c = read_char()?;
         cpu.register_put(reg, c);
