@@ -144,6 +144,7 @@ impl Cpu {
         };
 
         if res.is_err() {
+            self.state = CpuState::Error;
             println!("ERROR");
             println!("Instruction failed: {}", res.unwrap_err());
             println!("CPU State:");
