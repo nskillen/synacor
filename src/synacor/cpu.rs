@@ -80,28 +80,28 @@ impl Cpu {
         let rw = |off| bus.read_word(pc + off);
 
         let instruction = match instruction_code {
-             0 => Instruction::Halt,
-             1 => Instruction::Set(rw(1), rw(2)),
-             2 => Instruction::Push(rw(1)),
-             3 => Instruction::Pop(rw(1)),
-             4 => Instruction::Eq(rw(1), rw(2), rw(3)),
-             5 => Instruction::Gt(rw(1), rw(2), rw(3)),
-             6 => Instruction::Jmp(rw(1)),
-             7 => Instruction::Jt(rw(1), rw(2)),
-             8 => Instruction::Jf(rw(1), rw(2)),
-             9 => Instruction::Add(rw(1), rw(2), rw(3)),
-            10 => Instruction::Mult(rw(1), rw(2), rw(3)),
-            11 => Instruction::Mod(rw(1), rw(2), rw(3)),
-            12 => Instruction::And(rw(1), rw(2), rw(3)),
-            13 => Instruction::Or(rw(1), rw(2), rw(3)),
-            14 => Instruction::Not(rw(1), rw(2)),
-            15 => Instruction::Rmem(rw(1), rw(2)),
-            16 => Instruction::Wmem(rw(1), rw(2)),
-            17 => Instruction::Call(rw(1)),
-            18 => Instruction::Ret,
-            19 => Instruction::Out(rw(1)),
-            20 => Instruction::In(rw(1)),
-            21 => Instruction::Noop,
+             0 => (Opcode::Halt, 0,     0,     0),
+             1 => (Opcode::Set,  rw(1), rw(2), 0),
+             2 => (Opcode::Push, rw(1), 0,     0),
+             3 => (Opcode::Pop,  rw(1), 0,     0),
+             4 => (Opcode::Eq,   rw(1), rw(2), rw(3)),
+             5 => (Opcode::Gt,   rw(1), rw(2), rw(3)),
+             6 => (Opcode::Jmp,  rw(1), 0,     0),
+             7 => (Opcode::Jt,   rw(1), rw(2), 0),
+             8 => (Opcode::Jf,   rw(1), rw(2), 0),
+             9 => (Opcode::Add,  rw(1), rw(2), rw(3)),
+            10 => (Opcode::Mult, rw(1), rw(2), rw(3)),
+            11 => (Opcode::Mod,  rw(1), rw(2), rw(3)),
+            12 => (Opcode::And,  rw(1), rw(2), rw(3)),
+            13 => (Opcode::Or,   rw(1), rw(2), rw(3)),
+            14 => (Opcode::Not,  rw(1), rw(2), 0),
+            15 => (Opcode::Rmem, rw(1), rw(2), 0),
+            16 => (Opcode::Wmem, rw(1), rw(2), 0),
+            17 => (Opcode::Call, rw(1), 0,     0),
+            18 => (Opcode::Ret,  0,     0,     0),
+            19 => (Opcode::Out,  rw(1), 0,     0),
+            20 => (Opcode::In,   rw(1), 0,     0),
+            21 => (Opcode::Noop, 0,     0,     0),
             _  => panic!("Unknown instruction code: {}", instruction_code),
         };
 
@@ -120,28 +120,28 @@ impl Cpu {
 
     fn execute(&mut self, instruction: Instruction, bus: &mut Bus) {
         let res: OpRes<String> = match instruction {
-            /*  0 */ Instruction::Halt        => op::halt(self,bus),
-            /*  1 */ Instruction::Set(a,b)    => op::set(self,bus,a,b),
-            /*  2 */ Instruction::Push(a)     => op::push(self,bus,a),
-            /*  3 */ Instruction::Pop(a)      => op::pop(self,bus,a),
-            /*  4 */ Instruction::Eq(a,b,c)   => op::eq(self,a,b,c),
-            /*  5 */ Instruction::Gt(a,b,c)   => op::gt(self,a,b,c),
-            /*  6 */ Instruction::Jmp(a)      => op::jmp(self,a),
-            /*  7 */ Instruction::Jt(a,b)     => op::jt(self,a,b),
-            /*  8 */ Instruction::Jf(a,b)     => op::jf(self,a,b),
-            /*  9 */ Instruction::Add(a,b,c)  => op::add(self,a,b,c),
-            /* 10 */ Instruction::Mult(a,b,c) => op::mult(self,a,b,c),
-            /* 11 */ Instruction::Mod(a,b,c)  => op::rmdr(self,a,b,c),
-            /* 12 */ Instruction::And(a,b,c)  => op::and(self,a,b,c),
-            /* 13 */ Instruction::Or(a,b,c)   => op::or(self,a,b,c),
-            /* 14 */ Instruction::Not(a,b)    => op::not(self,a,b),
-            /* 15 */ Instruction::Rmem(a,b)   => op::rmem(self,bus,a,b),
-            /* 16 */ Instruction::Wmem(a,b)   => op::wmem(self,bus,a,b),
-            /* 17 */ Instruction::Call(a)     => op::call(self,bus,a),
-            /* 18 */ Instruction::Ret         => op::ret(self,bus),
-            /* 19 */ Instruction::Out(a)      => op::outc(self,a),
-            /* 20 */ Instruction::In(a)       => op::inc(self,a),
-            /* 21 */ Instruction::Noop        => op::noop(),
+            /*  0 */ (Opcode::Halt, _, _, _) => op::halt(self,bus),
+            /*  1 */ (Opcode::Set,  a, b, _) => op::set(self,bus,a,b),
+            /*  2 */ (Opcode::Push, a, _, _) => op::push(self,bus,a),
+            /*  3 */ (Opcode::Pop,  a, _, _) => op::pop(self,bus,a),
+            /*  4 */ (Opcode::Eq,   a, b, c) => op::eq(self,a,b,c),
+            /*  5 */ (Opcode::Gt,   a, b, c) => op::gt(self,a,b,c),
+            /*  6 */ (Opcode::Jmp,  a, _, _) => op::jmp(self,a),
+            /*  7 */ (Opcode::Jt,   a, b, _) => op::jt(self,a,b),
+            /*  8 */ (Opcode::Jf,   a, b, _) => op::jf(self,a,b),
+            /*  9 */ (Opcode::Add,  a, b, c) => op::add(self,a,b,c),
+            /* 10 */ (Opcode::Mult, a, b, c) => op::mult(self,a,b,c),
+            /* 11 */ (Opcode::Mod,  a, b, c) => op::rmdr(self,a,b,c),
+            /* 12 */ (Opcode::And,  a, b, c) => op::and(self,a,b,c),
+            /* 13 */ (Opcode::Or,   a, b, c) => op::or(self,a,b,c),
+            /* 14 */ (Opcode::Not,  a, b, _) => op::not(self,a,b),
+            /* 15 */ (Opcode::Rmem, a, b, _) => op::rmem(self,bus,a,b),
+            /* 16 */ (Opcode::Wmem, a, b, _) => op::wmem(self,bus,a,b),
+            /* 17 */ (Opcode::Call, a, _, _) => op::call(self,bus,a),
+            /* 18 */ (Opcode::Ret,  _, _, _) => op::ret(self,bus),
+            /* 19 */ (Opcode::Out,  a, _, _) => op::outc(self,a),
+            /* 20 */ (Opcode::In,   a, _, _) => op::inc(self,a),
+            /* 21 */ (Opcode::Noop, _, _, _) => op::noop(),
         };
 
         if res.is_failure() {
@@ -162,30 +162,14 @@ impl Cpu {
 }
 
 #[derive(Clone,Copy,Debug)]
-enum Instruction {
-    Halt,               //  0       - halts execution
-    Set  (WORD,WORD),     //  1 a b   - set register <a> to the value of <b>
-    Push (WORD),         //  2 a     - push <a> onto the stack
-    Pop  (WORD),         //  3 a     - remove the top element from the stack, and write to <a>, empty stack = ERR
-    Eq   (WORD,WORD,WORD), //  4 a b c - set <a> to 1 if <b> is equal to <c>, set to 0 otherwise
-    Gt   (WORD,WORD,WORD), //  5 a b c - set <a> to 1 if <b> is greater than <c>, set to 0 otherwise
-    Jmp  (WORD),         //  6 a     - jump to <a>
-    Jt   (WORD,WORD),     //  7 a b   - if <a> is non-zero, jump to <b>, aka Jnz
-    Jf   (WORD,WORD),     //  8 a b   - if <a> is zero, jump to <b>, aka Jz
-    Add  (WORD,WORD,WORD), //  9 a b c - store into <a> the sum of <b> and <c>, mod MODULO
-    Mult (WORD,WORD,WORD), // 10 a b c - store into <a> the product of <b> and <c>, mod MODULO
-    Mod  (WORD,WORD,WORD), // 11 a b c - store into <a> the remainder of <b> divided by <c>
-    And  (WORD,WORD,WORD), // 12 a b c - store into <a> the bitwise and of <b> and <c>
-    Or   (WORD,WORD,WORD), // 13 a b c - store into <a> the bitwise or of <b> and <c>
-    Not  (WORD,WORD),     // 14 a b   - store into <a> the bitwise not of <b>
-    Rmem (WORD,WORD),     // 15 a b   - read memory at address <b>, write to <a>
-    Wmem (WORD,WORD),     // 16 a b   - write value from <b> into memory at address <a>
-    Call (WORD),         // 17 a     - writes the address of the next instruction to the stack, and jumps to <a>
-    Ret,                // 18       - remove the top element from the stack and jump to it. empty stack == HLT
-    Out  (WORD),         // 19 a     - print the character represented by ASCII(<a>) to the terminal
-    In   (WORD),         // 20 a     - read a character from the terminal, and store ASCII_VAL(c) => <a>
-    Noop,               // 21       - no operation
+pub enum Opcode {
+    Halt, Set,  Push, Pop, Eq,
+    Gt,   Jmp,  Jt,   Jf,  Add,
+    Mult, Mod,  And,  Or,  Not,
+    Rmem, Wmem, Call, Ret, Out,
+    In,   Noop,
 }
+type Instruction = (Opcode,WORD,WORD,WORD);
 
 #[derive(Debug,PartialEq)]
 pub enum CpuState {
