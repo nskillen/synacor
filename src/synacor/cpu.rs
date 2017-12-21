@@ -1,17 +1,28 @@
 use std::collections::VecDeque;
+use super::addr::Addr;
 use super::bus::Bus;
 use super::{OpRes,WORD};
+use super::opcode::Opcode;
 
 pub const MAX_MEM_ADDR:  WORD   = 0x7FFF;
 pub const MODULO:        WORD   = 0x8000;
 pub const NUM_REGISTERS: usize = 8;
+
+type Instruction = (Opcode,WORD,WORD,WORD);
+
+#[derive(Debug,PartialEq)]
+pub enum CpuState {
+    NotStarted,
+    Running,
+    Halted,
+    Error
+}
 
 #[derive(Debug)]
 pub struct Cpu {
     state: CpuState,
     registers: [WORD; NUM_REGISTERS], // arch has 8 16-bit registers
     pc: usize, // instruction pointer
-    //sp: usize, // stack pointer
     prev_instructions: VecDeque<Instruction>,
 }
 
@@ -21,7 +32,6 @@ impl Cpu {
             state: CpuState::NotStarted,
             registers: [0; NUM_REGISTERS],
             pc: 0,
-            //sp: 0,
             prev_instructions: VecDeque::new(),
         }
     }
@@ -43,7 +53,7 @@ impl Cpu {
         self.state = CpuState::Running;
     }
 
-    pub fn step(&mut self, bus: &mut Bus) {
+    pub fn step(&mut self, bus: &mut Bus, debug_mode: bool) {
         // ensure we're running, first.
         if self.state != CpuState::Running {
             panic!("Attempted to execute instruction while in invalid state: {:?}", self.state);
@@ -54,6 +64,8 @@ impl Cpu {
 
         let instruction_code = self.fetch(self.pc, bus);
         let instruction = self.decode(instruction_code, bus);
+
+        if debug_mode { println!("@{:#04X}: {:?}", self.pc, instruction); }
         
         self.prev_instructions.push_front(instruction);
         if self.prev_instructions.len() > 5 { self.prev_instructions.pop_back(); }
@@ -69,7 +81,6 @@ impl Cpu {
 
     #[cfg(test)]
     pub fn pc(&self) -> usize { self.pc }
-    //pub fn sp(&self) -> usize { self.sp }
 
     /* PRIVATE */
 
@@ -157,39 +168,6 @@ impl Cpu {
                 let instr = instr.unwrap();
                 println!("  {:?}", instr);
             }
-        }
-    }
-}
-
-#[derive(Clone,Copy,Debug)]
-pub enum Opcode {
-    Halt, Set,  Push, Pop, Eq,
-    Gt,   Jmp,  Jt,   Jf,  Add,
-    Mult, Mod,  And,  Or,  Not,
-    Rmem, Wmem, Call, Ret, Out,
-    In,   Noop,
-}
-type Instruction = (Opcode,WORD,WORD,WORD);
-
-#[derive(Debug,PartialEq)]
-pub enum CpuState {
-    NotStarted,
-    Running,
-    Halted,
-    Error
-}
-
-enum Addr {
-    Register(usize),
-    Immediate(WORD),
-}
-
-impl Addr {
-    fn map(value: WORD) -> Addr {
-        match value {
-            v if v <  0x8000               => Addr::Immediate(v),
-            v if v >= 0x8000 && v < 0x8008 => Addr::Register((v - 0x8000) as usize),
-            v                              => panic!("Invalid number: {}", v),
         }
     }
 }
